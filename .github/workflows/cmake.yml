@@ -1,0 +1,59 @@
+name: CMake
+ 
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+ 
+env:
+  BUILD_TYPE: Release
+ 
+jobs:
+  posix:
+    strategy:
+      fail-fast: false
+      matrix: 
+        include:
+          - cmake-flags: >-
+              -DCMAKE_CXX_COMPILER=clang++-14 -DCMAKE_C_COMPILER=clang-14
+              -DCMAKE_BUILD_TYPE=Debug
+              -DDEBUG=1
+              -DTESTING=1
+              -DSANITIZERS=1
+            os: ubuntu-22.04
+            info: clang-14 + debug + sanitizers
+          - cmake-flags: >-
+              -DCMAKE_CXX_COMPILER=g++-9 -DCMAKE_C_COMPILER=gcc-9 
+              -DCMAKE_BUILD_TYPE=Debug
+              -DDEBUG=1
+              -DTESTING=1
+              -DSANITIZERS=1
+            os: ubuntu-20.04
+            info: g++-9 + debug + sanitizers
+          - cmake-flags: >-
+              -DCMAKE_CXX_COMPILER=g++-9 -DCMAKE_C_COMPILER=gcc-9
+              -DCMAKE_BUILD_TYPE=Release
+            os: ubuntu-20.04
+            info: g++-9 + release
+          - cmake-flags: >-
+              -DCMAKE_BUILD_TYPE=Release
+            os: ubuntu-18.04
+            info: g++-8 + release
+    name: '${{matrix.os}}: ${{matrix.info}}'
+    runs-on: ${{matrix.os}}
+ 
+    steps:
+    - uses: actions/checkout@v3
+      with:
+        submodules: recursive
+ 
+    - name: Configure CMake
+      run: |
+        cmake -B ${{github.workspace}}/build ${{matrix.cmake-flags}}
+    - name: Build
+      run: cmake --build ${{github.workspace}}/build --config ${{env.BUILD_TYPE}}
+ 
+    - name: Test
+      working-directory: ${{github.workspace}}/build
+      run: ctest -V
